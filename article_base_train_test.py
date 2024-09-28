@@ -31,8 +31,6 @@ def main():
     
     train_ds = train_val_split['train']
     val_ds = train_val_split['test']
-    # train_ds = load_custom_dataset_from_csv('dataset/train_samples.csv', 'dataset/images')
-    # val_ds = load_custom_dataset_from_csv('dataset/val.csv', 'dataset/images')
 
     model_id = "google/paligemma-3b-pt-224"
     processor = PaliGemmaProcessor.from_pretrained(model_id)
@@ -41,10 +39,7 @@ def main():
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
         bnb_4bit_quant_type="nf4",
-        # bnb_4bit_compute_type=torch.bfloat16,
-        # bnb_4bit_compute_type=torch.float16
         bnb_4bit_compute_dtype=torch.bfloat16
-        # bnb_4bit_use_double_quant=True,
     )
     lora_config = LoraConfig(
         r=8,
@@ -53,7 +48,6 @@ def main():
     )
     
     model = PaliGemmaForConditionalGeneration.from_pretrained(model_id, quantization_config=bnb_config, device_map={"": 0})
-    # model.gradient_checkpointing_enable()
     model = get_peft_model(model, lora_config)
     model.print_trainable_parameters()
 
@@ -61,7 +55,6 @@ def main():
         output_dir=f"./output/{math.floor(time.time())}",
         num_train_epochs=2,
         remove_unused_columns=False,
-        # per_device_train_batch_size=16,
         per_device_train_batch_size=4,
         gradient_accumulation_steps=4,
         warmup_steps=2,
@@ -79,10 +72,8 @@ def main():
 
     # Custom collate function
     def collate_fn(examples):
-        # texts = ["answer " + example["question"] for example in examples]
         texts = [example["question"] for example in examples]
         labels = [example['answer'] for example in examples]
-        # images = [Image.open(image_path).convert("RGB") for image_path in examples['image']]
         images = [Image.open(example['image']).convert("RGB") for example in examples]
         tokens = processor(text=texts, images=images, suffix=labels, return_tensors="pt", padding="longest")
         tokens = tokens.to(torch.bfloat16).to(device)
