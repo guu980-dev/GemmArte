@@ -5,10 +5,12 @@ from PIL import Image
 from io import BytesIO
 from dotenv import load_dotenv
 import os
+import deepl
 
 load_dotenv()
 ENDPOINT_URL = "https://api.runpod.ai/v2/qkqui1t394hjws/runsync"
-API_KEY = os.getenv("API_KEY")
+INFERENCE_API_KEY = os.getenv("INFERENCE_API_KEY")
+TRANSLATE_API_KEY = os.getenv("TRANSLATE_API_KEY")
 
 def encode_image_to_base64(image):
   buffered = BytesIO()
@@ -17,7 +19,16 @@ def encode_image_to_base64(image):
   return img_str
 
 
-def critic_image(image):
+def translate_en_to_ko(text):
+  translator = deepl.Translator(TRANSLATE_API_KEY)
+  try:
+      result = translator.translate_text(text, target_lang="KO")
+      return result.text
+  except deepl.DeepLException as e:
+      return f"번역 중 오류 발생: {str(e)}"
+
+
+def critic_image(image, language):
   img_base64 = encode_image_to_base64(image)
   payload = {
       "input": {
@@ -28,7 +39,7 @@ def critic_image(image):
   }
 
   headers = {
-      "Authorization": API_KEY,
+      "Authorization": INFERENCE_API_KEY,
       "Content-Type": "application/json"
   }
   
@@ -36,12 +47,20 @@ def critic_image(image):
   response = requests.post(ENDPOINT_URL, json=payload, headers=headers)
   result = response.json()
 
-  return result['output']['result'].strip()
+  analysis_result = result['output']['result'].strip()
+
+  if language == "KO":
+      return translate_en_to_ko(analysis_result)  # 한국어로 번역 후 반환
+  else:
+      return analysis_result  # 영어 그대로 반환
 
 
 demo = gr.Interface(
   fn=critic_image,
-  inputs=gr.Image(type="pil"),
+  inputs=[
+    gr.Image(type="pil"),
+    gr.Radio(choices=["EN", "KO"], label="Select Language", value="EN")
+  ],
   outputs="text",
   title="Gemmarte",
   description="Upload an image and get a visual analysis in text form from the Gemmarte model." 
