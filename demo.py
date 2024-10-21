@@ -28,12 +28,12 @@ def translate_en_to_ko(text):
       return f"번역 중 오류 발생: {str(e)}"
 
 
-def critic_image(image, language):
+def critic_image(image, language, category):
   img_base64 = encode_image_to_base64(image)
   payload = {
       "input": {
           "max_new_tokens": 512,
-          "category": "General Visual Analysis",
+          "category": category,
           "image": img_base64
       }
   }
@@ -55,11 +55,19 @@ def critic_image(image, language):
       return analysis_result  # 영어 그대로 반환
 
 
+categories = [
+  'General Visual Analysis', 'Form and Shape', 'Symbolism and Iconography', 
+  'Composition', 'Color Palette', 'Light and Shadow', 'Texture', 
+  'Movement and Gesture', 'Line Quality', 'Perspective', 'Scale and Proportion'
+]
+
+
 demo = gr.Interface(
   fn=critic_image,
   inputs=[
     gr.Image(type="pil"),
-    gr.Radio(choices=["EN", "KO"], label="Select Language", value="EN")
+    gr.Radio(choices=["EN", "KO"], label="Select Language", value="EN"),
+    gr.Dropdown(choices=categories, label="Select Category", value="General Visual Analysis")
   ],
   outputs="text",
   title="Gemmarte",
